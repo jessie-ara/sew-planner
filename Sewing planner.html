@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sewing planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f6f3;--card:#fff;--ink:#1c2230;--mute:#6b7280;--line:#dfe2dc;--chalk:#3b5bdb;--butter:#fbefb0;--ok:#2f8f5b;--warn:#c2410c;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171a21;--card:#20242d;--ink:#eceef2;--mute:#9aa1ae;--line:#323846;--chalk:#8ea2ff;--butter:#4a4420;--ok:#5cc08a;--warn:#f59e6b}}
+:root[data-theme="dark"]{--bg:#171a21;--card:#20242d;--ink:#eceef2;--mute:#9aa1ae;--line:#323846;--chalk:#8ea2ff;--butter:#4a4420;--ok:#5cc08a;--warn:#f59e6b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Instrument Sans",system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:0}h2{font-size:18px;margin:0 0 4px}
+.top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.top select{flex:1;min-width:140px}
+button,select,input,textarea{font:inherit;color:inherit}
+button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+button.pri{background:var(--chalk);border-color:var(--chalk);color:#fff}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--chalk);outline-offset:1px}
+input[type=text],input[type=date],select,textarea{width:100%;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+textarea{min-height:60px;resize:vertical}
+label.f{display:block;font-size:13px;color:var(--mute);margin:10px 0 3px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
+/* measuring tape */
+.tape{display:grid;grid-template-columns:repeat(6,1fr);background:var(--butter);border:1px solid var(--line);border-radius:6px;height:54px;overflow:hidden;margin:6px 0 14px;position:relative}
+.tape button{border:0;border-radius:0;background:repeating-linear-gradient(90deg,var(--ink) 0 1px,transparent 1px 8px) bottom/100% 7px no-repeat;border-right:1px solid var(--ink);padding:4px 2px 10px;font-size:13px;font-weight:600;text-align:center;position:relative;color:var(--ink)}
+.tape button:last-child{border-right:0}
+.tape button.done::after{content:"";position:absolute;left:0;right:0;top:0;height:5px;background:var(--ok)}
+.tape button.cur{background-color:var(--chalk);color:#fff;background-image:repeating-linear-gradient(90deg,#fff 0 1px,transparent 1px 8px)}
+.tape button.lock{opacity:.5}
+.tape small{display:block;font-weight:400;font-size:11px;opacity:.8}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line)}
+.chk:last-child{border:0}
+.chk input{width:20px;height:20px;margin-top:2px;accent-color:var(--chalk)}
+.chk.on span{color:var(--mute);text-decoration:line-through}
+.note{background:var(--butter);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+.gate{font-size:14px;color:var(--warn);margin:0 0 10px}
+.ok{color:var(--ok)}
+.row{display:flex;gap:8px;align-items:center}
+.row input[type=text]{flex:1}
+.bl{border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:8px}
+.nav{display:flex;justify-content:space-between;margin-top:8px;gap:8px}
+.sum{width:100%;border-collapse:collapse;font-size:14px}
+.sum td{padding:6px 4px;border-bottom:1px solid var(--line)}
+#print{display:none}
+@media print{body>main{display:none}#print{display:block;color:#000;background:#fff;font-size:12pt;padding:0}
+#print h1{font-size:20pt}#print table{width:100%;border-collapse:collapse}#print td{border:1px solid #000;padding:8px;vertical-align:top;height:40px}#print td:first-child{width:28%;font-weight:600}}
+</style></head><body>
+<main id="app"></main>
+<div id="print"></div>
+<script>
+const STAGES=[
+{n:"Plan",items:["Pattern, view and size chosen","Fabric sourced","Thread and needle sourced","Interfacing sourced","Notions and trims sourced"],gate:"Everything sourced"},
+{n:"Prep",items:["Pattern read through","Unknowns clarified","Measurements taken","Method locked (reference sheet filled)"],gate:"Reference sheet done"},
+{n:"Fit",items:["Toile made, or baste-and-try if skipping","Adjustments marked on pattern"],gate:"Adjustments noted on pattern"},
+{n:"Cut",items:["Grainline checked","Layout planned","Cutting method set","Markings transferred","Pieces labelled"],gate:"Pieces marked and labelled"},
+{n:"Sew",items:["Finishing done"],gate:"Finishing done, all operations ticked"},
+{n:"Review",items:[],gate:""}];
+const REF=[["seam","Seam finish"],["hem","Hem"],["needle","Needle"],["thread","Thread"],["stitch","Stitch length"],["layout","Cutting layout"],["order","Order of operations"],["embel","Embellishment (decide here)"]];
+let S={cur:null,projects:[]},stage=0;
+try{S=JSON.parse(localStorage.getItem("sewplan")||"")||S}catch(e){}
+if(!S.projects)S={cur:null,projects:[]};
+const save=()=>{try{localStorage.setItem("sewplan",JSON.stringify(S))}catch(e){}};
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const P=()=>S.projects.find(p=>p.id===S.cur);
+function newP(){const n=S.projects.length+1;const p={id:Date.now(),no:"#"+String(n).padStart(4,"0"),f:{},ref:{},checks:{},dates:{},ops:[],bl:[],rev:{}};S.projects.push(p);S.cur=p.id;stage=0;save();render()}
+function done(p,i){const st=STAGES[i];if(i===5)return !!(p.rev.keep||p.rev.change);
+if(!st.items.every((_,j)=>p.checks[i+"-"+j]))return false;
+if(i===4&&!p.ops.every(o=>o.d))return false;return true}
+function unlocked(p,i){for(let k=0;k<i;k++)if(!done(p,k))return false;return true}
+function nextTime(p){const key=(p.f.pattern||"").trim().toLowerCase();if(!key)return[];
+return S.projects.filter(q=>q.id!==p.id&&(q.f.pattern||"").trim().toLowerCase()===key&&q.rev.change).map(q=>q.no+": "+q.rev.change)}
+function inp(p,path,label,type){const v=path.split(".").reduce((o,k)=>o&&o[k],p)||"";
+return `<label class="f">${label}</label><input type="${type||"text"}" data-p="${path}" value="${esc(v)}">`}
+function ta(p,path,label){const v=path.split(".").reduce((o,k)=>o&&o[k],p)||"";
+return `<label class="f">${label}</label><textarea data-p="${path}">${esc(v)}</textarea>`}
+function checks(p,i){return STAGES[i].items.map((t,j)=>{const on=p.checks[i+"-"+j];return `<label class="chk ${on?"on":""}"><input type="checkbox" data-c="${i}-${j}" ${on?"checked":""}><span>${esc(t)}</span></label>`}).join("")}
+function body(p){let h="";const i=stage;
+if(i===0){h+=`<div class="grid">${inp(p,"f.pattern","Pattern (brand + number)")}${inp(p,"f.view","View / size")}${inp(p,"f.type","Garment type")}${inp(p,"f.material","Fabric")}</div>${ta(p,"f.notions","Notions and trims")}${ta(p,"f.sketch","Sketch / swatch notes")}`}
+if(i===1){const nt=nextTime(p);if(nt.length)h+=`<div class="note"><b>Change this time</b><br>${nt.map(esc).join("<br>")}</div>`;
+h+=`<div class="grid">${REF.map(([k,l])=>inp(p,"ref."+k,l)).join("")}</div>`;
+h+=`<p><button data-a="print">Print reference sheet</button></p>`}
+if(i===2)h+=ta(p,"f.fitnotes","Fit adjustments");
+if(i===3)h+=ta(p,"f.cutnotes","Cut and marking notes");
+if(i===4){h+=`<h2>Operations</h2>`+p.ops.map((o,k)=>`<div class="row chk ${o.d?"on":""}"><input type="checkbox" data-o="${k}" ${o.d?"checked":""}><span style="flex:1">${esc(o.t)}</span><button data-a="delop" data-k="${k}" aria-label="Delete">×</button></div>`).join("")+
+`<div class="row" style="margin-top:8px"><input type="text" id="newop" placeholder="Next operation"><button data-a="addop">Add</button></div>`;
+h+=`<h2 style="margin-top:18px">Blockers</h2>`+p.bl.map((b,k)=>`<div class="bl"><input type="text" data-b="${k}.prob" placeholder="Problem" value="${esc(b.prob)}"><input type="text" data-b="${k}.fix" placeholder="Fix" value="${esc(b.fix)}" style="margin-top:6px"><input type="text" data-b="${k}.lesson" placeholder="Lesson" value="${esc(b.lesson)}" style="margin-top:6px"></div>`).join("")+`<p><button data-a="addbl">Log a blocker</button></p>`}
+if(i===5){h+=`${ta(p,"rev.fix","Problem → fix")}${ta(p,"rev.keep","Keep doing")}${ta(p,"rev.change","Change next time (shows up on the next one)")}`}
+return h}
+function render(){const p=P();let h=`<div class="top"><h1>Sewing planner</h1></div><div class="top"><select id="sel">${S.projects.map(q=>`<option value="${q.id}" ${q.id===S.cur?"selected":""}>${esc(q.no)} ${esc(q.f.pattern||"untitled")}</option>`).join("")||"<option>No projects yet</option>"}</select><button class="pri" data-a="new">New</button>${p?`<button data-a="del">Delete</button>`:""}</div>`;
+if(!p){document.getElementById("app").innerHTML=h+`<div class="card">Start your first project: tap New.</div>`;return}
+const d=S.projects.length;
+h+=`<div class="card"><div class="grid">${inp(p,"no","Project number")}${inp(p,"f.finish","Target finish","date")}</div></div>`;
+h+=`<div class="tape">${STAGES.map((s,i)=>`<button data-s="${i}" class="${i===stage?"cur":""} ${done(p,i)?"done":""} ${unlocked(p,i)?"":"lock"}">${i+1}<small>${s.n}</small></button>`).join("")}</div>`;
+const st=STAGES[stage],ul=unlocked(p,stage);
+h+=`<div class="card"><h2>${stage+1}. ${st.n}</h2>`;
+if(!ul)h+=`<p class="gate">Gate open on ${STAGES[stage-1].n}: ${esc(STAGES[stage-1].gate)}.</p>`;
+const dt=p.dates[stage]||"";const late=dt&&!done(p,stage)&&dt<new Date().toISOString().slice(0,10);
+h+=`<label class="f">Date for this stage${late?` <b style="color:var(--warn)">(overdue)</b>`:""}</label><input type="date" data-p="dates.${stage}" value="${dt}" style="max-width:180px">`;
+h+=checks(p,stage)+body(p);
+h+=`<div class="nav"><button data-a="prev" ${stage?"":"disabled"}>Back</button>${done(p,stage)&&stage<5?`<span class="ok" style="align-self:center">Gate clear</span>`:""}<button class="pri" data-a="next" ${stage<5?"":"disabled"}>Next stage</button></div></div>`;
+h+=`<div class="card"><h2>Calendar</h2><table class="sum">${STAGES.map((s,i)=>`<tr><td>${s.n}</td><td>${esc(p.dates[i]||"–")}</td><td class="${done(p,i)?"ok":""}">${done(p,i)?"Done":""}</td></tr>`).join("")}<tr><td><b>Finish</b></td><td>${esc(p.f.finish||"–")}</td><td></td></tr></table></div>`;
+document.getElementById("app").innerHTML=h;
+document.getElementById("print").innerHTML=`<h1>${esc(p.no)} ${esc(p.f.pattern||"")}</h1><p>${esc(p.f.type||"")} · ${esc(p.f.material||"")} · ${esc(p.f.view||"")}</p><table>${REF.map(([k,l])=>`<tr><td>${l}</td><td>${esc(p.ref[k]||"")}</td></tr>`).join("")}</table>`}
+document.addEventListener("input",e=>{const p=P(),t=e.target;if(!p)return;
+if(t.dataset.p){const ks=t.dataset.p.split(".");let o=p;for(let i=0;i<ks.length-1;i++){o[ks[i]]=o[ks[i]]||{};o=o[ks[i]]}o[ks[ks.length-1]]=t.value;save();if(t.dataset.p==="no"){document.getElementById("sel").options[document.getElementById("sel").selectedIndex].text=t.value+" "+(p.f.pattern||"untitled")}}
+if(t.dataset.b){const[k,f]=t.dataset.b.split(".");p.bl[k][f]=t.value;save()}});
+document.addEventListener("change",e=>{const p=P(),t=e.target;if(t.id==="sel"){S.cur=+t.value;stage=0;save();render();return}
+if(!p)return;if(t.dataset.c){p.checks[t.dataset.c]=t.checked;save();render()}
+if(t.dataset.o){p.ops[t.dataset.o].d=t.checked;save();render()}
+if(t.dataset.p&&(t.dataset.p.startsWith("dates")||t.dataset.p==="f.pattern"))render()});
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;const p=P(),a=t.dataset.a;
+if(t.dataset.s!==undefined){stage=+t.dataset.s;render();return}
+if(a==="new")newP();
+if(!p)return;
+if(a==="del"&&confirm("Delete this project?")){S.projects=S.projects.filter(q=>q.id!==p.id);S.cur=S.projects.length?S.projects[0].id:null;save();render()}
+if(a==="next"){stage++;render();scrollTo(0,0)}
+if(a==="prev"){stage--;render();scrollTo(0,0)}
+if(a==="addop"){const v=document.getElementById("newop").value.trim();if(v){p.ops.push({t:v,d:false});save();render()}}
+if(a==="delop"){p.ops.splice(+t.dataset.k,1);save();render()}
+if(a==="addbl"){p.bl.push({prob:"",fix:"",lesson:""});save();render()}
+if(a==="print")window.print()});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="newop")document.querySelector('[data-a="addop"]').click()});
+if(!S.cur&&S.projects.length)S.cur=S.projects[0].id;
+render();
+</script></body></html>
